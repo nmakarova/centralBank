@@ -7,10 +7,14 @@ import java.util.Map;
 import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+
 import entities.CorrespondentAccount;
 import entities.PersonalAccount;
 import utils.UUIDGenerator;
 
+@Singleton
 public class BankService {
 
 	public static String bankUUID = UUIDGenerator.generateUuid();;
@@ -18,12 +22,13 @@ public class BankService {
 	Map<String, PersonalAccount> personalAccounts;
 	Map<String, CorrespondentAccount> correspondentAccounts;
 
+	@Inject
 	public BankService() {
 		personalAccounts = new ConcurrentHashMap<String, PersonalAccount>();
 		correspondentAccounts = new ConcurrentHashMap<String, CorrespondentAccount>();
 	}
 
-	public static String getBankUUID() {
+	public String getBankUUID() {
 		return bankUUID;
 	}
 
@@ -51,13 +56,14 @@ public class BankService {
 		return personalAccounts.get(accountUUID);
 	}
 
-	public PersonalAccount addPersonalAccount(PersonalAccount personalAccount) {
-		return personalAccounts.put(personalAccount.getUuid(), personalAccount);
+	public void addPersonalAccount(PersonalAccount personalAccount) {
+		personalAccounts.put(personalAccount.getUuid(), personalAccount);
 	}
 
 	public PersonalAccount createPersonalAccount(BigDecimal availableAmount) {
 		PersonalAccount personalAccount = new PersonalAccount(availableAmount, getBankUUID());
-		return addPersonalAccount(personalAccount);
+		addPersonalAccount(personalAccount);
+		return personalAccount;
 	}
 
 	public void readPersonalAccountFromFile(String filePath) {

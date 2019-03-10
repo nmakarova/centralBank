@@ -1,13 +1,25 @@
 package centralBank.centralBank;
 
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+
+import services.BankService;
+import utils.BaseModule;
+
 /**
- * Hello world!
+ * main class
  *
  */
-public class App 
-{
-    public static void main( String[] args )
-    {
-        System.out.println( "Hello World!" );
-    }
+public class App {
+	
+	static BankService bankService;
+	
+	public static void main(String[] args) {
+		guiceInjection();
+	}
+	
+	public static void guiceInjection() {
+		Injector injector = Guice.createInjector(new BaseModule());
+		bankService = injector.getInstance(BankService.class);
+	}
 }

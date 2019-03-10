@@ -2,7 +2,8 @@ package entities;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.util.UUID;
+
+import utils.UUIDGenerator;
 
 public class PersonalAccount implements Serializable {
 
@@ -17,13 +18,7 @@ public class PersonalAccount implements Serializable {
 	public PersonalAccount(BigDecimal availableAmount, String bankUuid) {
 		super();
 		this.availableAmount = availableAmount;
-		this.uuid = bankUuid.concat(".").concat(generateUuid());
-	}
-
-	private String generateUuid() {
-		UUID uuid = UUID.randomUUID();
-		String randomUUIDString = uuid.toString();
-		return randomUUIDString;
+		this.uuid = bankUuid.concat(".").concat(UUIDGenerator.generateUuid());
 	}
 
 	public String getUuid() {

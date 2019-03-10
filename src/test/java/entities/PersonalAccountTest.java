@@ -15,9 +15,9 @@ public class PersonalAccountTest extends TestCase {
 	}
 	
 	public void testUUID() {
-		BigDecimal summ = new BigDecimal(537);
+		BigDecimal availableAmount = new BigDecimal(537);
 		String bankUUID = generateUuid();
-		PersonalAccount personalAccount = new PersonalAccount(summ, bankUUID);
+		PersonalAccount personalAccount = new PersonalAccount(availableAmount, bankUUID);
 		assertEquals(personalAccount.getUuid().substring(0, personalAccount.getUuid().indexOf(".")), bankUUID);
 	}
 

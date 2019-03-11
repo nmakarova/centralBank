@@ -66,8 +66,8 @@ public class BankService {
 		return personalAccount;
 	}
 
-	public void readPersonalAccountFromFile(String filePath) {
-		Scanner scanner;
+	public void readPersonalAccountFromFile(String filePath) throws FileNotFoundException {
+		Scanner scanner = null;
 		try {
 			scanner = new Scanner(new File(filePath));
 			scanner.useDelimiter(" ");
@@ -77,7 +77,11 @@ public class BankService {
 				createPersonalAccount(availableAmount);
 			}
 		} catch (FileNotFoundException e) {
-			e.printStackTrace();
+			throw e;
+		} finally {
+			if (scanner != null) {
+				scanner.close();
+			}
 		}
 
 	}

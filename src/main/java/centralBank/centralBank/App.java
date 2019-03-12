@@ -5,6 +5,9 @@ import java.util.Scanner;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.hazelcast.config.Config;
+import com.hazelcast.core.Hazelcast;
+import com.hazelcast.core.HazelcastInstance;
 
 import services.BankService;
 import utils.BaseModule;
@@ -19,6 +22,7 @@ public class App {
 
 	public static void main(String[] args) {
 		guiceInjection();
+		createHazelcastInstance();
 		Scanner in = new Scanner(System.in);
 		String command = "";
 		System.out.println("Welcome to our bank!");
@@ -41,6 +45,13 @@ public class App {
 		bankService = injector.getInstance(BankService.class);
 	}
 
+	public static HazelcastInstance createHazelcastInstance() {
+		Config cfg = new Config();
+		cfg.setProperty("bankUUID", bankService.getBankUUID());
+		HazelcastInstance instance = Hazelcast.newHazelcastInstance(cfg);
+		return instance;
+	}
+
 	public static void executeCommand(String command, Scanner in) {
 		try {
 			switch (Commands.valueOf(command)) {
@@ -50,6 +61,7 @@ public class App {
 				executeReadPC(in);
 				break;
 			default:
+				System.out.println("Sorry, there is no such operation in our bank. Please try again!");
 				break;
 			}
 		} catch (IllegalArgumentException e) {

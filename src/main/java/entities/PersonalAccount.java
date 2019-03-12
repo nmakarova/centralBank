@@ -25,6 +25,10 @@ public class PersonalAccount implements Serializable {
 		return uuid;
 	}
 
+	public String getLocalUuid() {
+		return uuid.substring(0, uuid.indexOf("."));
+	}
+	
 	public BigDecimal getAvailableAmount() {
 		return availableAmount;
 	}
@@ -33,4 +37,8 @@ public class PersonalAccount implements Serializable {
 		this.availableAmount = availableAmount;
 	}
 
+	@Override
+	public String toString() {
+		return "Account uuid = " + getLocalUuid() + "AvailableAmount = " + availableAmount.doubleValue();
+	}
 }

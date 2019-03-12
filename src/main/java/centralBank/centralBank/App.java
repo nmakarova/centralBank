@@ -1,6 +1,7 @@
 package centralBank.centralBank;
 
 import java.io.FileNotFoundException;
+import java.util.Map;
 import java.util.Scanner;
 
 import com.google.inject.Guice;
@@ -9,6 +10,7 @@ import com.hazelcast.config.Config;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 
+import entities.PersonalAccount;
 import services.BankService;
 import utils.BaseModule;
 
@@ -60,6 +62,9 @@ public class App {
 			case READPC:
 				executeReadPC(in);
 				break;
+			case SHOWALL:
+				executeShowAll(in);
+				break;
 			default:
 				System.out.println("Sorry, there is no such operation in our bank. Please try again!");
 				break;
@@ -81,7 +86,19 @@ public class App {
 			System.out.println("Sorry, we can't read personalAccounts from this file. Please try again!");
 			return;
 		}
-
+	}
+	
+	public static void executeShowAll(Scanner in) {
+		try {
+			System.out.println("All accounts of this bank:");
+			Map<String, PersonalAccount> personalAccounts = bankService.getPersonalAccounts();
+			for(Map.Entry<String, PersonalAccount> personalAccount : personalAccounts.entrySet()) {
+				System.out.println(personalAccount.getValue());
+			}
+		} catch (Exception e) {
+			System.out.println("Sorry, we can't show you all accounts of this bank.");
+			return;
+		}
 	}
 
 }

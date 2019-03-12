@@ -3,12 +3,16 @@ package services;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.hazelcast.core.Hazelcast;
+import com.hazelcast.core.HazelcastInstance;
 
 import entities.CorrespondentAccount;
 import entities.PersonalAccount;
@@ -19,13 +23,16 @@ public class BankService {
 
 	public static String bankUUID = UUIDGenerator.generateUuid();;
 
+	@Inject
+	private HazelcastInstanceService hzService;
+
 	Map<String, PersonalAccount> personalAccounts;
-	Map<String, CorrespondentAccount> correspondentAccounts;
+	Map<String, List<CorrespondentAccount>> correspondentAccounts;
+	Map<String, List<String>> corrAccounstUuids;
 
 	@Inject
 	public BankService() {
 		personalAccounts = new ConcurrentHashMap<String, PersonalAccount>();
-		correspondentAccounts = new ConcurrentHashMap<String, CorrespondentAccount>();
 	}
 
 	public String getBankUUID() {
@@ -36,16 +43,8 @@ public class BankService {
 		return personalAccounts;
 	}
 
-	public Map<String, CorrespondentAccount> getCorrespondentAccounts() {
-		return correspondentAccounts;
-	}
-
 	public void clearPersonalAccounts() {
 		getPersonalAccounts().clear();
-	}
-
-	public void clearCorrespondentAccounts() {
-		getCorrespondentAccounts().clear();
 	}
 
 	public Boolean personalAccountExist(String accountUUID) {
@@ -58,6 +57,26 @@ public class BankService {
 
 	public void addPersonalAccount(PersonalAccount personalAccount) {
 		personalAccounts.put(personalAccount.getUuid(), personalAccount);
+	}
+
+	public void addToCorrespondentAccounts(String bankUUID, CorrespondentAccount correspondentAccount) {
+		if (getCorrespondentAccounts().containsKey(bankUUID)) {
+			getCorrespondentAccounts().get(bankUUID).add(correspondentAccount);
+		} else {
+			List<CorrespondentAccount> corrAccounts = new ArrayList<CorrespondentAccount>();
+			corrAccounts.add(correspondentAccount);
+			getCorrespondentAccounts().put(bankUUID, corrAccounts);
+		}
+	}
+
+	public void addToCorrespondentAccountsUuids(String bankUUID, String corrBankUUID) {
+		if (getCorrespondentAccountsUuids().containsKey(bankUUID)) {
+			getCorrespondentAccountsUuids().get(bankUUID).add(corrBankUUID);
+		} else {
+			List<String> corrAccountsUuids = new ArrayList<String>();
+			corrAccountsUuids.add(corrBankUUID);
+			getCorrespondentAccountsUuids().put(bankUUID, corrAccountsUuids);
+		}
 	}
 
 	public PersonalAccount createPersonalAccount(BigDecimal availableAmount) {
@@ -84,5 +103,40 @@ public class BankService {
 			}
 		}
 
+	}
+
+	public Map<String, List<String>> getCorrespondentAccountsUuids() {
+		return hzService.getCorrespondentAccountsUuids();
+	}
+
+	public Map<String, List<CorrespondentAccount>> getCorrespondentAccounts() {
+		return hzService.getCorrespondentAccounts();
+	}
+
+	public void addNewBankCorrecpondentAccounts(Map<String, BigDecimal> corrAccountsInfo) {
+		List<String> corrAccountsUuids = new ArrayList<String>();
+		List<CorrespondentAccount> corrAccounts = new ArrayList<CorrespondentAccount>();
+		if (corrAccountsInfo == null) {
+			getCorrespondentAccountsUuids().put(getBankUUID(), corrAccountsUuids);
+			getCorrespondentAccounts().put(getBankUUID(), corrAccounts);
+			return;
+		}
+		for (HazelcastInstance hzInstance : Hazelcast.getAllHazelcastInstances()) {
+			if (!hzInstance.equals(hzService.getInstance())) {
+				String corrBankUUID = hzInstance.getConfig().getProperty("bankUUID");
+				corrAccountsUuids.add(corrBankUUID);
+				String bankUUID = getBankUUID();
+				BigDecimal availableAmount = corrAccountsInfo.get(corrBankUUID);
+				CorrespondentAccount corrAccountThisBank = new CorrespondentAccount(availableAmount, bankUUID,
+						corrBankUUID);
+				corrAccounts.add(corrAccountThisBank);
+				CorrespondentAccount corrAccountOtherBank = new CorrespondentAccount(availableAmount, corrBankUUID,
+						bankUUID);
+				addToCorrespondentAccountsUuids(corrBankUUID, bankUUID);
+				addToCorrespondentAccounts(corrBankUUID, corrAccountOtherBank);
+			}
+		}
+		getCorrespondentAccountsUuids().put(getBankUUID(), corrAccountsUuids);
+		getCorrespondentAccounts().put(getBankUUID(), corrAccounts);
 	}
 }

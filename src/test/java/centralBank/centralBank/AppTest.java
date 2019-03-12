@@ -39,16 +39,18 @@ public class AppTest extends TestCase {
 
 	public void testHazelcastCreation() {
 		App.guiceInjection();
-		HazelcastInstance instance = App.createHazelcastInstance();
+		App.hzService.createHazelcasInstance();
+		HazelcastInstance instance = App.hzService.getInstance();
 		assertEquals(instance.getConfig().getProperty("bankUUID"), App.bankService.getBankUUID());
 		instance.shutdown();
 	}
 	
 	public void testCreationSeveralHZInstances() {
 		App.guiceInjection();
-		App.createHazelcastInstance();
-		App.createHazelcastInstance();
+		App.hzService.createHazelcasInstance();
+		App.hzService.createHazelcasInstance();
 		assertEquals(2, Hazelcast.getAllHazelcastInstances().size());
 		Hazelcast.shutdownAll();
 	}
+
 }

@@ -1,17 +1,17 @@
 package centralBank.centralBank;
 
 import java.io.FileNotFoundException;
+import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
-import com.hazelcast.config.Config;
-import com.hazelcast.core.Hazelcast;
-import com.hazelcast.core.HazelcastInstance;
 
 import entities.PersonalAccount;
 import services.BankService;
+import services.HazelcastInstanceService;
 import utils.BaseModule;
 
 /**
@@ -21,11 +21,14 @@ import utils.BaseModule;
 public class App {
 
 	static BankService bankService;
+	static HazelcastInstanceService hzService;
 
 	public static void main(String[] args) {
 		guiceInjection();
-		createHazelcastInstance();
+		hzService.createHazelcasInstance();
 		Scanner in = new Scanner(System.in);
+		Map<String, BigDecimal> corrMapInfo = getCorrAccountsInfo(in);
+		bankService.addNewBankCorrecpondentAccounts(corrMapInfo);
 		String command = "";
 		System.out.println("Welcome to our bank!");
 		System.out.println("How can we help you?");
@@ -38,20 +41,48 @@ public class App {
 				System.out.print("Put you message here: ");
 			}
 		}
-		System.out.println("Bank closed until tomorrow!");
-		in.close();
+		close(in);
 	}
 
 	public static void guiceInjection() {
 		Injector injector = Guice.createInjector(new BaseModule());
 		bankService = injector.getInstance(BankService.class);
+		hzService = injector.getInstance(HazelcastInstanceService.class);
 	}
 
-	public static HazelcastInstance createHazelcastInstance() {
-		Config cfg = new Config();
-		cfg.setProperty("bankUUID", bankService.getBankUUID());
-		HazelcastInstance instance = Hazelcast.newHazelcastInstance(cfg);
-		return instance;
+	public static Map<String, BigDecimal> getCorrAccountsInfo(Scanner in) {
+		Map<String, BigDecimal> corrMapInfo = new HashMap<String, BigDecimal>();
+		if (!hzService.isOnlyOneInstance()) {
+			System.out.println("Let's open correspondent Accounts !");
+			for (String bankUuid : hzService.getCorrespondentAccountsUuids().keySet()) {
+				int tryCount = 0;
+				boolean success = false;
+				BigDecimal amount = null;
+				while (tryCount < 3 && !success) {
+					System.out.println("Put corrAccount availableAmount (Ex: 100500.66666) for bank =  " + bankUuid);
+					String amountString = in.nextLine().trim();
+					try {
+						amount = new BigDecimal(amountString);
+					} catch (Exception e) {
+						tryCount++;
+						int attempsLeft = 3 - tryCount;
+						if (attempsLeft != 0) {
+							System.out.println("Try again. You have " + attempsLeft + " attemps left");
+						}
+						continue;
+					}
+					success = true;
+				}
+				if (success) {
+					corrMapInfo.put(bankUuid, amount);
+				} else {
+					System.out.println("We are sorry you try to cheat us. We need to close now.");
+					close(in);
+				}
+			}
+			return corrMapInfo;
+		}
+		return null;
 	}
 
 	public static void executeCommand(String command, Scanner in) {
@@ -87,12 +118,12 @@ public class App {
 			return;
 		}
 	}
-	
+
 	public static void executeShowAll(Scanner in) {
 		try {
 			System.out.println("All accounts of this bank:");
 			Map<String, PersonalAccount> personalAccounts = bankService.getPersonalAccounts();
-			for(Map.Entry<String, PersonalAccount> personalAccount : personalAccounts.entrySet()) {
+			for (Map.Entry<String, PersonalAccount> personalAccount : personalAccounts.entrySet()) {
 				System.out.println(personalAccount.getValue());
 			}
 		} catch (Exception e) {
@@ -101,4 +132,10 @@ public class App {
 		}
 	}
 
+	public static void close(Scanner in) {
+		System.out.println("Bank closed until tomorrow!");
+		hzService.getInstance().shutdown();
+		in.close();
+		System.exit(0);
+	}
 }

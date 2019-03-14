@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
@@ -29,6 +30,17 @@ public class BankService {
 	private HazelcastInstanceService hzService;
 
 	private static Map<String, PersonalAccount> personalAccounts = new HashMap<String, PersonalAccount>();
+	
+	private static Thread daemonThead;
+	
+	private static List <PaymentDocument> paymentsList = new LinkedList <PaymentDocument>();
+	@Inject
+	public BankService() {
+		daemonThead = new Thread(new PaymentExecutor());
+		daemonThead.setDaemon(true);
+		daemonThead.start();
+	}
+	
 	Map<String, List<CorrespondentAccount>> correspondentAccounts;
 	Map<String, List<String>> corrAccounstUuids;
 
@@ -36,6 +48,12 @@ public class BankService {
 		return BANK_UUID;
 	}
 
+	public void addPaymentDocumentToQueue(PaymentDocument document) {
+		synchronized(paymentsList) {
+			paymentsList.add(document);
+		}
+	}
+	
 	public Map<String, PersonalAccount> getPersonalAccounts() {
 		return personalAccounts;
 	}
@@ -271,4 +289,27 @@ public class BankService {
 		Integer compareDecimalsResult = corrAccount.getAvailableAmount().compareTo(document.getTransferAmount());
 		return (compareDecimalsResult.equals(1)) || (compareDecimalsResult.equals(0));
 	}
+	
+	private class PaymentExecutor implements Runnable {
+		List<PaymentDocument> execList = new LinkedList<PaymentDocument>();
+		public void run() {
+			 while ( true ) {
+                 try {
+                	 synchronized(paymentsList) {
+                		 execList.addAll(paymentsList);
+                		 paymentsList.clear();
+                		 for(PaymentDocument document : execList) {
+                			 perfomPaymentDocument(document);
+                		 }
+                		 
+                	 }
+                     Thread.sleep(15000);
+                 } catch (InterruptedException e) {
+                     System.out.print(e);
+             } finally {
+            	 execList.clear();
+             }
+		}
+	}
+}
 }

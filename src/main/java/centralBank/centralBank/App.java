@@ -35,7 +35,7 @@ public class App {
 		System.out.println("How can we help you?");
 		System.out.print("Put you message here: ");
 		while (!command.equals(Commands.CLOSE.name())) {
-			command = in.nextLine().toUpperCase();
+			command = in.nextLine().trim().toUpperCase();
 			executeCommand(command, in);
 			if (!command.equals(Commands.CLOSE.name())) {
 				System.out.println("Anything else?");
@@ -163,7 +163,7 @@ public class App {
 			}
 			if (success) {
 				PaymentDocument document = new PaymentDocument(debitAccountUuid, creditAccountUuid, amount);
-				bankService.perfomPaymentDocument(document);
+				bankService.addPaymentDocumentToQueue(document);
 			} else {
 				System.out.println("Sorry, try again. ");
 			}

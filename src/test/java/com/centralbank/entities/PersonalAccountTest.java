@@ -1,9 +1,11 @@
-package entities;
+package com.centralbank.entities;
 
 import java.math.BigDecimal;
 
+import com.centralbank.entities.PersonalAccount;
+import com.centralbank.utils.UUIDGenerator;
+
 import junit.framework.TestCase;
-import utils.UUIDGenerator;
 
 public class PersonalAccountTest extends TestCase {
 

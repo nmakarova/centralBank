@@ -1,4 +1,4 @@
-package services;
+package com.centralbank.services;
 
 import java.util.List;
 import java.util.Map;
@@ -6,6 +6,12 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import com.centralbank.entities.CorrespondentAccount;
+import com.centralbank.entities.DocumentStatus;
+import com.centralbank.entities.PaymentDocument;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.hazelcast.config.Config;
@@ -15,21 +21,18 @@ import com.hazelcast.core.Member;
 import com.hazelcast.scheduledexecutor.IScheduledExecutorService;
 import com.hazelcast.scheduledexecutor.IScheduledFuture;
 
-import entities.CorrespondentAccount;
-import entities.DocumentStatus;
-import entities.PaymentDocument;
-
 @Singleton
 public class HazelcastInstanceService {
 
 	@Inject
-	BankService bankService;
+	private BankService bankService;
 
+	private static final Logger LOG = LogManager.getLogger(HazelcastInstanceService.class);
+	
 	private static HazelcastInstance instance;
 
 	public void createHazelcasInstance() {
 		Config cfg = new Config();
-		cfg.setProperty("bankUUID", bankService.getBankUUID());
 		cfg.setProperty("hazelcast.logging.type", "none");
 		instance = Hazelcast.newHazelcastInstance(cfg);
 		instance.getCluster().getLocalMember().setStringAttribute("bankUUID", bankService.getBankUUID());
@@ -40,7 +43,7 @@ public class HazelcastInstanceService {
 	}
 
 	public Boolean isOnlyOneInstance() {
-		return getInstance().getCluster().getMembers().size() > 1 ? false : true;
+		return getInstance().getCluster().getMembers().size()<=1;
 	}
 
 	public Map<String, List<CorrespondentAccount>> getCorrespondentAccounts() {
@@ -63,10 +66,10 @@ public class HazelcastInstanceService {
 			try {
 				result = resultFuture.get();
 			} catch (InterruptedException e) {
-				e.printStackTrace();
+				LOG.error(e);
 				return DocumentStatus.REJECTED;
 			} catch (ExecutionException e) {
-				e.printStackTrace();
+				LOG.error(e);
 				return DocumentStatus.REJECTED;
 			}
 		}

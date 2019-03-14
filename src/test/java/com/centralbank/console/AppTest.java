@@ -1,11 +1,9 @@
-package centralBank.centralBank;
+package com.centralbank.console;
 
 import java.math.BigDecimal;
 
-import com.hazelcast.core.Hazelcast;
-import com.hazelcast.core.HazelcastInstance;
+import com.centralbank.entities.PersonalAccount;
 
-import entities.PersonalAccount;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;

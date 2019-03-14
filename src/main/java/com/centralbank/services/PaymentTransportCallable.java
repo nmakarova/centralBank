@@ -1,14 +1,13 @@
-package services;
+package com.centralbank.services;
 
 import java.io.Serializable;
 import java.util.concurrent.Callable;
 
+import com.centralbank.entities.DocumentStatus;
+import com.centralbank.entities.PaymentDocument;
+import com.centralbank.utils.BaseModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
-
-import entities.DocumentStatus;
-import entities.PaymentDocument;
-import utils.BaseModule;
 
 public class PaymentTransportCallable implements Serializable, Callable<DocumentStatus> {
 	/**

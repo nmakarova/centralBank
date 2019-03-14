@@ -1,12 +1,18 @@
-package services;
+package com.centralbank.services;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import com.centralbank.services.BankService;
+
 import junit.framework.TestCase;
 
 public class BankServiceTest extends TestCase {
-
+	private static final Logger LOG = LogManager.getLogger(BankServiceTest.class);
+	
 	public void testPersonalAccountsCreationFromFile() {
 		BankService bankService = new BankService();
 		ClassLoader classLoader = getClass().getClassLoader();
@@ -15,8 +21,7 @@ public class BankServiceTest extends TestCase {
 		try {
 			bankService.readPersonalAccountFromFile(filePath);
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			LOG.error(e);
 		}
 		assertEquals(9, bankService.getPersonalAccounts().size());
 	}

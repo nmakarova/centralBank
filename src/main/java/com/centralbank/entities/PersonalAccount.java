@@ -1,9 +1,9 @@
-package entities;
+package com.centralbank.entities;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
 
-import utils.UUIDGenerator;
+import com.centralbank.utils.UUIDGenerator;
 
 public class PersonalAccount implements Serializable {
 

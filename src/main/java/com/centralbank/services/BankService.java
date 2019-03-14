@@ -1,4 +1,4 @@
-package services;
+package com.centralbank.services;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -11,19 +11,22 @@ import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import com.centralbank.entities.CorrespondentAccount;
+import com.centralbank.entities.DocumentStatus;
+import com.centralbank.entities.PaymentDocument;
+import com.centralbank.entities.PersonalAccount;
+import com.centralbank.utils.UUIDGenerator;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.hazelcast.core.Member;
 
-import entities.CorrespondentAccount;
-import entities.DocumentStatus;
-import entities.PaymentDocument;
-import entities.PersonalAccount;
-import utils.UUIDGenerator;
-
 @Singleton
 public class BankService {
 
+	private static final Logger LOG = LogManager.getLogger(BankService.class);
 	public static final String BANK_UUID = UUIDGenerator.generateUuid();
 
 	@Inject
@@ -31,12 +34,14 @@ public class BankService {
 
 	private static Map<String, PersonalAccount> personalAccounts = new HashMap<String, PersonalAccount>();
 	
-	private static Thread daemonThead;
-	
 	private static List <PaymentDocument> paymentsList = new LinkedList <PaymentDocument>();
 	@Inject
 	public BankService() {
-		daemonThead = new Thread(new PaymentExecutor());
+		startDaemon(); 
+	}
+	
+	private void startDaemon() {
+		Thread daemonThead = new Thread(new PaymentExecutor());
 		daemonThead.setDaemon(true);
 		daemonThead.start();
 	}
@@ -115,6 +120,7 @@ public class BankService {
 				createPersonalAccount(availableAmount);
 			}
 		} catch (FileNotFoundException e) {
+			LOG.error(e);
 			throw e;
 		} finally {
 			if (scanner != null) {
@@ -305,7 +311,8 @@ public class BankService {
                 	 }
                      Thread.sleep(15000);
                  } catch (InterruptedException e) {
-                     System.out.print(e);
+                     LOG.error(e);
+                     Thread.currentThread().interrupt();
              } finally {
             	 execList.clear();
              }

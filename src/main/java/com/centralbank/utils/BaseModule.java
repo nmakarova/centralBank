@@ -1,9 +1,8 @@
-package utils;
+package com.centralbank.utils;
 
+import com.centralbank.services.BankService;
+import com.centralbank.services.HazelcastInstanceService;
 import com.google.inject.AbstractModule;
-
-import services.BankService;
-import services.HazelcastInstanceService;
 
 public class BaseModule extends AbstractModule {
 	@Override

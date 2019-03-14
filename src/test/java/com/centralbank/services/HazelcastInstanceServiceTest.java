@@ -1,4 +1,4 @@
-package services;
+package com.centralbank.services;
 
 import junit.framework.TestCase;
 

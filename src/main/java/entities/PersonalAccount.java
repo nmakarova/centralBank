@@ -26,7 +26,15 @@ public class PersonalAccount implements Serializable {
 	}
 
 	public String getLocalUuid() {
-		return uuid.substring(0, uuid.indexOf("."));
+		return uuid.substring(uuid.indexOf('.')+1);
+	}
+	
+	public String getBankUuid() {
+		return uuid.substring(0, uuid.indexOf('.'));
+	}
+	
+	public static String getBankUuid(String uuid) {
+		return uuid.substring(0, uuid.indexOf('.'));
 	}
 	
 	public BigDecimal getAvailableAmount() {
@@ -39,6 +47,6 @@ public class PersonalAccount implements Serializable {
 
 	@Override
 	public String toString() {
-		return "Account uuid = " + getLocalUuid() + "AvailableAmount = " + availableAmount.doubleValue();
+		return "Account uuid = " + getUuid() + " AvailableAmount = " + availableAmount.doubleValue();
 	}
-}
+}  

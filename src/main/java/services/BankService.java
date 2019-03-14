@@ -4,39 +4,36 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.hazelcast.core.Hazelcast;
-import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.Member;
 
 import entities.CorrespondentAccount;
+import entities.DocumentStatus;
+import entities.PaymentDocument;
 import entities.PersonalAccount;
 import utils.UUIDGenerator;
 
 @Singleton
 public class BankService {
 
-	public static String bankUUID = UUIDGenerator.generateUuid();;
+	public static final String BANK_UUID = UUIDGenerator.generateUuid();
 
 	@Inject
 	private HazelcastInstanceService hzService;
 
-	Map<String, PersonalAccount> personalAccounts;
+	private static Map<String, PersonalAccount> personalAccounts = new HashMap<String, PersonalAccount>();
 	Map<String, List<CorrespondentAccount>> correspondentAccounts;
 	Map<String, List<String>> corrAccounstUuids;
 
-	@Inject
-	public BankService() {
-		personalAccounts = new ConcurrentHashMap<String, PersonalAccount>();
-	}
-
 	public String getBankUUID() {
-		return bankUUID;
+		return BANK_UUID;
 	}
 
 	public Map<String, PersonalAccount> getPersonalAccounts() {
@@ -61,7 +58,9 @@ public class BankService {
 
 	public void addToCorrespondentAccounts(String bankUUID, CorrespondentAccount correspondentAccount) {
 		if (getCorrespondentAccounts().containsKey(bankUUID)) {
-			getCorrespondentAccounts().get(bankUUID).add(correspondentAccount);
+			List<CorrespondentAccount> corrAccounts = getCorrespondentAccounts().get(bankUUID);
+			corrAccounts.add(correspondentAccount);
+			getCorrespondentAccounts().put(bankUUID, corrAccounts);
 		} else {
 			List<CorrespondentAccount> corrAccounts = new ArrayList<CorrespondentAccount>();
 			corrAccounts.add(correspondentAccount);
@@ -71,7 +70,9 @@ public class BankService {
 
 	public void addToCorrespondentAccountsUuids(String bankUUID, String corrBankUUID) {
 		if (getCorrespondentAccountsUuids().containsKey(bankUUID)) {
-			getCorrespondentAccountsUuids().get(bankUUID).add(corrBankUUID);
+			List<String> corrAccountsUuids = getCorrespondentAccountsUuids().get(bankUUID);
+			corrAccountsUuids.add(corrBankUUID);
+			getCorrespondentAccountsUuids().put(bankUUID, corrAccountsUuids);
 		} else {
 			List<String> corrAccountsUuids = new ArrayList<String>();
 			corrAccountsUuids.add(corrBankUUID);
@@ -92,7 +93,7 @@ public class BankService {
 			scanner.useDelimiter(" ");
 			while (scanner.hasNext()) {
 				Double ammountFromFile = scanner.nextDouble();
-				BigDecimal availableAmount = new BigDecimal(ammountFromFile);
+				BigDecimal availableAmount = BigDecimal.valueOf(ammountFromFile);
 				createPersonalAccount(availableAmount);
 			}
 		} catch (FileNotFoundException e) {
@@ -102,7 +103,6 @@ public class BankService {
 				scanner.close();
 			}
 		}
-
 	}
 
 	public Map<String, List<String>> getCorrespondentAccountsUuids() {
@@ -111,6 +111,18 @@ public class BankService {
 
 	public Map<String, List<CorrespondentAccount>> getCorrespondentAccounts() {
 		return hzService.getCorrespondentAccounts();
+	}
+	
+	public CorrespondentAccount getCorrespondentAccountByUuid(String uuid) {
+		CorrespondentAccount result = null;
+		List<CorrespondentAccount> corrAccounts = hzService.getCorrespondentAccounts().get(getBankUUID());
+		for(CorrespondentAccount corrAccount : corrAccounts) {
+			if(corrAccount.getCorrBankUuid().equals(uuid)) {
+				result = corrAccount;
+				break;
+			}
+		}
+		return result;
 	}
 
 	public void addNewBankCorrecpondentAccounts(Map<String, BigDecimal> corrAccountsInfo) {
@@ -121,22 +133,138 @@ public class BankService {
 			getCorrespondentAccounts().put(getBankUUID(), corrAccounts);
 			return;
 		}
-		for (HazelcastInstance hzInstance : Hazelcast.getAllHazelcastInstances()) {
-			if (!hzInstance.equals(hzService.getInstance())) {
-				String corrBankUUID = hzInstance.getConfig().getProperty("bankUUID");
+		Set <Member> hzMembers = hzService.getInstance().getCluster().getMembers();
+		for (Member member : hzMembers) {
+			if (!member.equals(hzService.getInstance().getCluster().getLocalMember())) {
+				String corrBankUUID = member.getStringAttribute("bankUUID");
 				corrAccountsUuids.add(corrBankUUID);
-				String bankUUID = getBankUUID();
 				BigDecimal availableAmount = corrAccountsInfo.get(corrBankUUID);
-				CorrespondentAccount corrAccountThisBank = new CorrespondentAccount(availableAmount, bankUUID,
+				CorrespondentAccount corrAccountThisBank = new CorrespondentAccount(availableAmount, getBankUUID(),
 						corrBankUUID);
 				corrAccounts.add(corrAccountThisBank);
 				CorrespondentAccount corrAccountOtherBank = new CorrespondentAccount(availableAmount, corrBankUUID,
-						bankUUID);
-				addToCorrespondentAccountsUuids(corrBankUUID, bankUUID);
+						getBankUUID());
+				addToCorrespondentAccountsUuids(corrBankUUID, getBankUUID());
 				addToCorrespondentAccounts(corrBankUUID, corrAccountOtherBank);
 			}
 		}
 		getCorrespondentAccountsUuids().put(getBankUUID(), corrAccountsUuids);
 		getCorrespondentAccounts().put(getBankUUID(), corrAccounts);
+	}
+
+	public PaymentDocument perfomPaymentDocument(PaymentDocument document) {
+		document.setStatus(DocumentStatus.ON_PERFOMANCE);
+		boolean isCreditAccountBelongsToThisBank = isAccountBelongsToThisBank(document.getCreditAccountUuid());
+		boolean isDebitAccountBelongsToThisBank = isAccountBelongsToThisBank(document.getDebitAccountUuid());
+		if (isDebitAccountBelongsToThisBank && isCreditAccountBelongsToThisBank) {
+			DocumentStatus result = executeLocalPay(document);
+			document.setStatus(result);
+		} else if (isCreditAccountBelongsToThisBank) {
+			executePayFromOurCreditToCorrDebit(document);
+			String bankUuid = PersonalAccount.getBankUuid(document.getDebitAccountUuid());
+			DocumentStatus result = hzService.sendPaymentToAnotherBank(document, bankUuid);
+			document.setStatus(result);
+			if (!result.equals(DocumentStatus.EXECUTED)) {
+				rejectFromOurCreditToCorrDebit(document);
+			}
+		}
+		return document;
+	}
+
+	public DocumentStatus executePaymentDocument(PaymentDocument document) {
+		DocumentStatus result = DocumentStatus.REJECTED;
+		document.setStatus(DocumentStatus.ON_PERFOMANCE);
+		boolean isDebitAccountBelongsToThisBank = isAccountBelongsToThisBank(document.getDebitAccountUuid());
+		boolean isCreditAccountBelongsToThisBank = isAccountBelongsToThisBank(document.getCreditAccountUuid());
+		if (isDebitAccountBelongsToThisBank && isCreditAccountBelongsToThisBank) {
+			result = executeLocalPay(document);
+			document.setStatus(result);
+		} else if (isDebitAccountBelongsToThisBank) {
+			result = executePayToOurDebit (document);
+		}
+		return result;
+	}
+	
+	private boolean isAccountBelongsToThisBank(String accountUUID) {
+		return getBankUUID().equals(PersonalAccount.getBankUuid(accountUUID));
+	}
+
+	private DocumentStatus executeLocalPay(PaymentDocument document) {
+		if (!isEnoughMoneyOnCredit(document)) {
+			return DocumentStatus.NOT_ENOUGH_MONEY_ON_CLIENT_CREDIT;
+		} else {
+			synchronized (getPersonalAccounts()) {
+				PersonalAccount creditAccount = getPersonalAccount(document.getCreditAccountUuid());
+				PersonalAccount debitAccount = getPersonalAccount(document.getDebitAccountUuid());
+				creditAccount.setAvailableAmount(creditAccount.getAvailableAmount().subtract(document.getTransferAmount()));
+				debitAccount.setAvailableAmount(debitAccount.getAvailableAmount().add(document.getTransferAmount()));
+			}
+		}
+		return DocumentStatus.EXECUTED;
+	}
+	
+	private DocumentStatus executePayToOurDebit(PaymentDocument document) {
+		if (!isEnoughMoneyOnDebCorrAccount(document)) {
+			return DocumentStatus.NOT_ENOUGH_MONEY_ON_CORR_CREDIT;
+		} else {
+			synchronized (getPersonalAccounts()) {
+				String corAccountUuid = PersonalAccount.getBankUuid(document.getCreditAccountUuid());
+				CorrespondentAccount corrAccount = getCorrespondentAccountByUuid(corAccountUuid);
+				PersonalAccount debitAccount = getPersonalAccount(document.getDebitAccountUuid());
+				corrAccount.setAvailableAmount(corrAccount.getAvailableAmount().subtract(document.getTransferAmount()));
+				debitAccount.setAvailableAmount(debitAccount.getAvailableAmount().add(document.getTransferAmount()));
+			}
+		}
+		return DocumentStatus.EXECUTED;
+	}
+	
+	private DocumentStatus executePayFromOurCreditToCorrDebit(PaymentDocument document) {
+		if (!isEnoughMoneyOnCredit(document)) {
+			return DocumentStatus.NOT_ENOUGH_MONEY_ON_CLIENT_CREDIT;
+		} else {
+			synchronized (getPersonalAccounts()) {
+				PersonalAccount creditAccount = getPersonalAccount(document.getCreditAccountUuid());
+				String corAccountUuid = PersonalAccount.getBankUuid(document.getDebitAccountUuid());
+				CorrespondentAccount corrAccount = getCorrespondentAccountByUuid(corAccountUuid);
+				creditAccount.setAvailableAmount(creditAccount.getAvailableAmount().subtract(document.getTransferAmount()));
+				corrAccount.setAvailableAmount(corrAccount.getAvailableAmount().add(document.getTransferAmount()));
+			}
+		}
+		return DocumentStatus.EXECUTED;
+	}
+	
+	private DocumentStatus rejectFromOurCreditToCorrDebit(PaymentDocument document) {
+		if (!isEnoughMoneyOnCredCorrAccount(document)) {
+			return DocumentStatus.NOT_ENOUGH_MONEY_ON_CORR_DEBIT;
+		} else {
+			synchronized (getPersonalAccounts()) {
+				PersonalAccount creditAccount = getPersonalAccount(document.getCreditAccountUuid());
+				String corAccountUuid = PersonalAccount.getBankUuid(document.getDebitAccountUuid());
+				CorrespondentAccount corrAccount = getCorrespondentAccountByUuid(corAccountUuid);
+				creditAccount.setAvailableAmount(creditAccount.getAvailableAmount().add(document.getTransferAmount()));
+				corrAccount.setAvailableAmount(corrAccount.getAvailableAmount().subtract(document.getTransferAmount()));
+			}
+		}
+		return DocumentStatus.EXECUTED;
+	}
+
+	private boolean isEnoughMoneyOnCredit(PaymentDocument document) {
+		PersonalAccount creditAccount = getPersonalAccount(document.getCreditAccountUuid());
+		Integer compareDecimalsResult = creditAccount.getAvailableAmount().compareTo(document.getTransferAmount());
+		return (compareDecimalsResult.equals(1)) || (compareDecimalsResult.equals(0));
+	}
+	
+	private boolean isEnoughMoneyOnDebCorrAccount(PaymentDocument document) {
+		String corAccountUuid = PersonalAccount.getBankUuid(document.getCreditAccountUuid());
+		CorrespondentAccount corrAccount = getCorrespondentAccountByUuid(corAccountUuid);
+		Integer compareDecimalsResult = corrAccount.getAvailableAmount().compareTo(document.getTransferAmount());
+		return (compareDecimalsResult.equals(1)) || (compareDecimalsResult.equals(0));
+	}
+	
+	private boolean isEnoughMoneyOnCredCorrAccount(PaymentDocument document) {
+		String corAccountUuid = PersonalAccount.getBankUuid(document.getDebitAccountUuid());
+		CorrespondentAccount corrAccount = getCorrespondentAccountByUuid(corAccountUuid);
+		Integer compareDecimalsResult = corrAccount.getAvailableAmount().compareTo(document.getTransferAmount());
+		return (compareDecimalsResult.equals(1)) || (compareDecimalsResult.equals(0));
 	}
 }

@@ -9,6 +9,7 @@ import java.util.Scanner;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 
+import entities.PaymentDocument;
 import entities.PersonalAccount;
 import services.BankService;
 import services.HazelcastInstanceService;
@@ -96,6 +97,9 @@ public class App {
 			case SHOWALL:
 				executeShowAll(in);
 				break;
+			case PAYMENT:
+				executePayment(in);
+				break;
 			default:
 				System.out.println("Sorry, there is no such operation in our bank. Please try again!");
 				break;
@@ -128,6 +132,44 @@ public class App {
 			}
 		} catch (Exception e) {
 			System.out.println("Sorry, we can't show you all accounts of this bank.");
+			return;
+		}
+	}
+	
+	public static void executePayment(Scanner in) {
+		try {
+			System.out.println("Let's create payment document!");
+			System.out.println("Print full credit account uuid (Ex: c1af2.1ac13)");
+			String creditAccountUuid = in.nextLine().trim();
+			System.out.println("Print full debit account uuid (Ex: c1af2.1ac13)");
+			String debitAccountUuid = in.nextLine().trim();
+			int tryCount = 0;
+			boolean success = false;
+			BigDecimal amount = null;
+			while (tryCount < 3 && !success) {
+				System.out.println("Print amount to transfer (Ex: 450.444)");
+				String amountString = in.nextLine().trim();
+				try {
+					amount = new BigDecimal(amountString);
+				} catch (Exception e) {
+					tryCount++;
+					int attempsLeft = 3 - tryCount;
+					if (attempsLeft != 0) {
+						System.out.println("Try again. You have " + attempsLeft + " attemps left");
+					}
+					continue;
+				}
+				success = true;
+			}
+			if (success) {
+				PaymentDocument document = new PaymentDocument(debitAccountUuid, creditAccountUuid, amount);
+				bankService.perfomPaymentDocument(document);
+			} else {
+				System.out.println("Sorry, try again. ");
+			}
+
+		} catch (Exception e) {
+			System.out.println("Sorry, we can't perfom you payment");
 			return;
 		}
 	}

@@ -1,5 +1,5 @@
 package centralBank.centralBank;
 
 public enum Commands {
-	CLOSE, READPC, SHOWALL, PAYMENT;
+	CLOSE, READPC, SHOWALL, PAYMENT, INFO;
 }

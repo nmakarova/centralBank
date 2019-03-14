@@ -100,6 +100,9 @@ public class App {
 			case PAYMENT:
 				executePayment(in);
 				break;
+			case INFO:
+				executeInfo();
+				break;
 			default:
 				System.out.println("Sorry, there is no such operation in our bank. Please try again!");
 				break;
@@ -174,6 +177,32 @@ public class App {
 		}
 	}
 
+	public static void executeInfo() {
+		for (Commands command : Commands.values()) {
+			switch (command) {
+			case CLOSE:
+				System.out.println("CLOSE: Close bank");
+				break;
+			case READPC:
+				System.out.println("READPC: Read personalCounts from file");
+				break;
+			case SHOWALL:
+				System.out.println("SHOWALL: Show all personall counts");
+				break;
+			case PAYMENT:
+				System.out.println("PAYMENT: Execute payment");
+				break;
+			case INFO:
+				System.out.println("INFO: info");
+				break;
+			default:
+				System.out.println("Unknown");
+
+				break;
+			}
+		}
+	}
+	
 	public static void close(Scanner in) {
 		System.out.println("Bank closed until tomorrow!");
 		hzService.getInstance().shutdown();

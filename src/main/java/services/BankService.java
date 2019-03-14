@@ -166,7 +166,11 @@ public class BankService {
 			document.setStatus(result);
 			if (!result.equals(DocumentStatus.EXECUTED)) {
 				rejectFromOurCreditToCorrDebit(document);
-			}
+			} 
+		} else {
+			String bankUuid = PersonalAccount.getBankUuid(document.getDebitAccountUuid());
+			DocumentStatus result = hzService.sendPaymentToAnotherBank(document, bankUuid);
+			document.setStatus(result);
 		}
 		return document;
 	}
